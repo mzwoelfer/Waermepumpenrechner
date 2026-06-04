@@ -49,12 +49,15 @@ function calculate(p) {
     cumImmediate += immediateAnnual;
 
     const advantagePerYear = existingAnnual - immediateAnnual;
-    const advantageTotal = cumExisting - cumImmediate;
-
-    // Interest: money saved by NOT investing early is assumed invested.
-    // With p.interest = 0 this column stays 0 (matches the spreadsheet).
-    interestBalance = interestBalance * (1 + p.interest) + advantagePerYear;
-    const interest = interestBalance - advantageTotal;
+    // Cumulative advantage of "WP Sofort" including the opportunity cost of capital:
+    // each year's difference is carried forward and accrues interest. The early,
+    // large heat-pump investment therefore keeps "costing" interest every year,
+    // which pushes the break-even later. With p.interest = 0 this reduces to the
+    // plain cumulative difference (cumExisting - cumImmediate).
+    interestBalance = interestBalance * (1 + (p.interest || 0)) + advantagePerYear;
+    const advantageTotal = interestBalance;
+    // Interest portion that was added on top of the plain difference (for display).
+    const interest = advantageTotal - (cumExisting - cumImmediate);
 
     rows.push({
       i, year, elecPrice, fuelPrice, heatingLabel,
