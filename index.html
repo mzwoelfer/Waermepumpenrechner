@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wärmepumpen Rechner</title>
+    <meta
+      name="description"
+      content="Finde heraus, ob und wann sich eine Wärmepumpe für dich lohnt."
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  </head>  <body class="bg-slate-100 text-slate-800">
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-6">
+      <header class="mb-6">
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-900">
+          Wärmepumpen Rechner
+        </h1>
+        <p class="text-slate-600">
+          Finde heraus, ob und wann sich eine Wärmepumpe für dich lohnt. Alle
+          Eingaben werden sofort berechnet.
+        </p>
+      </header>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- ===================== Inputs ===================== -->
+        <section class="lg:col-span-1 space-y-4">
+          <!-- Allgemein -->
+          <div class="bg-white rounded-xl shadow p-4">
+            <h2 class="font-semibold text-slate-900 mb-3">Allgemein</h2>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Startjahr</span>
+                <input type="number" v-model.number="p.startYear" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Zeitraum (Jahre)</span>
+                <input type="number" min="1" max="60" v-model.number="p.years" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Bestehende Heizung -->
+          <div class="bg-white rounded-xl shadow p-4">
+            <h2 class="font-semibold text-slate-900 mb-3">Bestehende Heizung</h2>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="text-sm col-span-2">
+                <span class="block text-slate-600 mb-1">Heizungsart</span>
+                <div class="inline-flex rounded-lg border border-slate-300 overflow-hidden">
+                  <button type="button" @click="setFuel('Gas')"
+                          :class="p.heatingType === 'Gas' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'"
+                          class="px-4 py-1">Gas</button>
+                  <button type="button" @click="setFuel('Öl')"
+                          :class="p.heatingType === 'Öl' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'"
+                          class="px-4 py-1 border-l border-slate-300">Öl</button>
+                </div>
+              </div>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Jahresverbrauch ({{ fuelUnit }})</span>
+                <input type="number" v-model.number="consumptionDisplay" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Preis pro {{ fuelUnit }} (€)</span>
+                <input type="number" step="0.001" v-model.number="fuelPriceDisplay" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Preissteigerung/Jahr (%)</span>
+                <input type="number" step="0.1" v-model.number="fuelPriceIncreasePct" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Wirkungsgrad (%)</span>
+                <input type="number" step="1" v-model.number="efficiencyPct" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Kaufpreis Heizung (€)</span>
+                <input type="number" v-model.number="p.purchasePriceExisting" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Zinsen / Anlagezins (%)</span>
+                <input type="number" step="0.1" v-model.number="interestPct" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Wärmepumpe Sofort -->
+          <div class="bg-white rounded-xl shadow p-4">
+            <h2 class="font-semibold text-blue-700 mb-3">Wärmepumpe Sofort</h2>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Strompreis pro kWh (€)</span>
+                <input type="number" step="0.001" v-model.number="p.elecPrice" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Preissteigerung/Jahr (%)</span>
+                <input type="number" step="0.1" v-model.number="elecPriceIncreasePct" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Jahresarbeitszahl (JAZ)</span>
+                <input type="number" step="0.1" v-model.number="p.cop" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Kaufpreis (€)</span>
+                <input type="number" v-model.number="p.purchasePrice" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm col-span-2">
+                <span class="block text-slate-600 mb-1">Förderung (%)</span>
+                <input type="number" step="1" v-model.number="subsidyPct" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Wärmepumpe Später -->
+          <div class="bg-white rounded-xl shadow p-4">
+            <label class="flex items-center gap-2 mb-3 cursor-pointer">
+              <input type="checkbox" v-model="p.enableLater" class="rounded border-slate-300" />
+              <span class="font-semibold text-amber-700">Wärmepumpe Später berücksichtigen</span>
+            </label>
+            <p class="text-xs text-slate-500 mb-3">
+              Modelliert den (aktuell ab 2045 angenommenen) Gas-/Öl-Ausstieg: ab dem
+              Einbaujahr wird zwangsweise auf eine Wärmepumpe gewechselt. Abschalten,
+              falls die bestehende Heizung weiterlaufen darf.
+            </p>
+            <div class="grid grid-cols-2 gap-3" :class="{ 'opacity-40 pointer-events-none': !p.enableLater }">
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Einbaujahr</span>
+                <input type="number" v-model.number="p.installYear" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Jahresarbeitszahl (JAZ)</span>
+                <input type="number" step="0.1" v-model.number="p.copLater" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Kosten (€)</span>
+                <input type="number" v-model.number="p.costLater" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm">
+                <span class="block text-slate-600 mb-1">Förderung (%)</span>
+                <input type="number" step="1" v-model.number="subsidyLaterPct" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+              <label class="text-sm col-span-2">
+                <span class="block text-slate-600 mb-1">Neuer Wärmebedarf (kWh, optional)</span>
+                <input type="number" v-model.number="p.newHeatDemand" placeholder="leer = wie heute" class="w-full rounded border-slate-300 border px-2 py-1" />
+              </label>
+            </div>
+          </div>
+
+          <button @click="resetDefaults" class="w-full bg-slate-200 hover:bg-slate-300 rounded-lg py-2 text-sm font-medium">
+            Auf Standardwerte zurücksetzen
+          </button>
+        </section>
+
+        <!-- ===================== Output ===================== -->
+        <section class="lg:col-span-2 space-y-6">
+          <!-- Verdict -->
+          <div class="bg-white rounded-xl shadow p-4">
+            <template v-if="result.breakEven">
+              <p class="text-lg">
+                Die <span class="font-semibold text-blue-700">Wärmepumpe Sofort</span>
+                lohnt sich ab dem Jahr
+                <span class="font-bold">{{ result.breakEven.year }}</span>
+                (nach {{ result.breakEven.i }} Jahren).
+              </p>
+            </template>
+            <template v-else>
+              <p class="text-lg">
+                Im betrachteten Zeitraum lohnt sich die
+                <span class="font-semibold text-blue-700">Wärmepumpe Sofort</span>
+                <span class="font-bold"> nicht</span>.
+              </p>
+            </template>
+            <p class="text-sm text-slate-500 mt-1">
+              Wärmebedarf: {{ fmtNum.format(result.heatDemand) }} kWh/Jahr
+            </p>
+          </div>
+
+          <!-- Chart -->
+          <div class="bg-white rounded-xl shadow p-4">
+            <h2 class="font-semibold text-slate-900 mb-3">Gesamtkosten im Vergleich</h2>
+            <div class="relative h-72 md:h-96">
+              <canvas ref="chartCanvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="bg-white rounded-xl shadow p-4 overflow-x-auto">
+            <h2 class="font-semibold text-slate-900 mb-3">Detailtabelle</h2>
+            <table class="w-full text-right text-sm border-collapse">
+              <thead>
+                <tr class="text-slate-500 border-b">
+                  <th class="py-2 px-2 text-left">Jahr</th>
+                  <th class="py-2 px-2">Strompreis</th>
+                  <th class="py-2 px-2">Preis/{{ fuelUnit }}</th>
+                  <th class="py-2 px-2 text-red-700">Alt jährlich</th>
+                  <th class="py-2 px-2 text-red-700">Alt gesamt</th>
+                  <th class="py-2 px-2 text-blue-700">WP jährlich</th>
+                  <th class="py-2 px-2 text-blue-700">WP gesamt</th>
+                  <th class="py-2 px-2">Vorteil/Jahr</th>
+                  <th class="py-2 px-2">Vorteil gesamt</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in result.rows" :key="r.year"
+                    class="border-b last:border-0 hover:bg-slate-50"
+                    :class="r.advantageTotal >= 0 ? 'bg-green-50' : ''">
+                  <td class="py-1 px-2 text-left font-medium">{{ r.year }}</td>
+                  <td class="py-1 px-2 tabular-nums">{{ fmtEur2.format(r.elecPrice) }}</td>
+                  <td class="py-1 px-2 tabular-nums">{{ fmtEur2.format(isOil ? r.fuelPrice * 10.9 : r.fuelPrice) }}</td>
+                  <td class="py-1 px-2 tabular-nums">{{ fmtEur.format(r.existingAnnual) }}</td>
+                  <td class="py-1 px-2 tabular-nums">{{ fmtEur.format(r.cumExisting) }}</td>
+                  <td class="py-1 px-2 tabular-nums">{{ fmtEur.format(r.immediateAnnual) }}</td>
+                  <td class="py-1 px-2 tabular-nums">{{ fmtEur.format(r.cumImmediate) }}</td>
+                  <td class="py-1 px-2 tabular-nums"
+                      :class="r.advantagePerYear >= 0 ? 'text-green-700' : 'text-red-600'">
+                    {{ fmtEur.format(r.advantagePerYear) }}
+                  </td>
+                  <td class="py-1 px-2 tabular-nums font-medium"
+                      :class="r.advantageTotal >= 0 ? 'text-green-700' : 'text-red-600'">
+                    {{ fmtEur.format(r.advantageTotal) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <footer class="text-center text-xs text-slate-400 mt-8">
+        Nachbau des „Wärmepumpen Rechner“ (ODS v1.2). Alle Angaben ohne Gewähr.
+      </footer>
+    </div>
+
+    <script src="calc.js"></script>
+    <script src="app.js"></script>
+  </body></html>
