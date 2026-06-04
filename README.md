@@ -2,6 +2,8 @@
 
 Web-App Rechner ab wann sich eine Wärmepumpe lohnt
 
+https://mzwoelfer.github.io/Waermepumpenrechner/
+
 ## Funktionen
 
 - Vergleich "Alte Heizung" & "WP Später"
